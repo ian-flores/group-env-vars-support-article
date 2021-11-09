@@ -1,0 +1,16 @@
+tryCatch({
+    readRenviron("/r-env-folder/private-pkg-01-env-vars")
+    repos = getOption("repos")
+    repos['PRIVATE_PKG_REPO'] = Sys.getenv("PRIVATE_PKG_REPO")
+    options(repos = repos)
+    Sys.unsetenv("PRIVATE_PKG_REPO")
+  },
+  error = function(e){
+    invisible(NULL)
+  },
+  warning = function(w){
+    invisible(NULL)
+  },
+  finally = {}
+)
+

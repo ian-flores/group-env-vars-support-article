@@ -1,0 +1,52 @@
+---
+title: How to set up a particular RStudio Package Manager repository for a specific
+  group of users in RStudio Workbench
+author: "Ian Flores Siaca"
+date: "11/9/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+You can set up a particular RStudio Package Manager repository for a specific group of users within RStudio Workbench. To do this, it is necessary to make use of Linux group permissions and the `Rprofile.site` file within each R installation. This file is located at `/opt/R/{R_VERSION}/lib/R/etc/Rprofile.site` if using one of the binaries provided by RStudio. 
+
+For the purposes of this article we have the following infrastructure in place:
+
+- A version of R installed from the binaries provided by RStudio
+- A folder named `/r-env-folder` owned by root
+- A file named `private-pkg-01-env-vars` within the `/r-env-folder` owned by root
+- A group named `private-pkg-01`
+
+The first step is creating a folder to hold the package repository information. This is the first folder mentioned in the bullet list above, `/r-env-folder`. Within this folder, you will create the specific file for each group, for this article it will be `private-pkg-01-env-vars`. You will then proceed to change the permissions of this file so that it is owned by the specific group that you want to allow access to the variables. To do this you execute the `chgrp` command as shown below:
+
+```
+sudo chgrp private-pkg-01 /r-env-folder/private-pkg-01-env-vars
+```
+
+Once the file group ownership has been changed, you will open the file and add the package repository information in the following format:
+
+```
+PRIVATE_PKG_REPO="<RSPM_PRIVATE_REPO_URL>"
+```
+
+The next step is to modify the `Rprofile.site` file so that it loads the `private-pkg-01-env-vars`, if, the user opening the R session can read it:
+
+```
+tryCatch({
+    readRenviron("/r-env-folder/private-pkg-01-env-vars")
+    repos = getOption("repos")
+    repos['PRIVATE_PKG_REPO'] = Sys.getenv("PRIVATE_PKG_REPO")
+    options(repos = repos)
+    Sys.unsetenv("PRIVATE_PKG_REPO")
+  },
+  error = function(e){
+    invisible(NULL)
+  },
+  warning = function(w){
+    invisible(NULL)
+  },
+  finally = {}
+)
+```
+
+This block of code will try to read the file as previously mentioned, then set the package repository as a new additional repository to the other ones available to the user. It's also written so that it suppresses any warnings or errors so that users that are not part of the group don't see any additional output in their consoles. **Remember that this `Rprofile.site` file needs to be replicated across all R versions in the server.**
